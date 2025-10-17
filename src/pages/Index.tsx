@@ -24,28 +24,17 @@ interface ForecastDay {
 
 const WEATHER_API_URL = 'https://functions.poehali.dev/4bee087a-ba99-4695-8ade-49f74a767d80';
 
-const getWeatherIcon = (iconCode: string): string => {
-  const iconMap: Record<string, string> = {
-    '01d': 'Sun',
-    '01n': 'Moon',
-    '02d': 'CloudSun',
-    '02n': 'CloudMoon',
-    '03d': 'Cloud',
-    '03n': 'Cloud',
-    '04d': 'Cloudy',
-    '04n': 'Cloudy',
-    '09d': 'CloudRain',
-    '09n': 'CloudRain',
-    '10d': 'CloudRain',
-    '10n': 'CloudRain',
-    '11d': 'CloudLightning',
-    '11n': 'CloudLightning',
-    '13d': 'Snowflake',
-    '13n': 'Snowflake',
-    '50d': 'CloudFog',
-    '50n': 'CloudFog'
-  };
-  return iconMap[iconCode] || 'Cloud';
+const getWeatherIcon = (condition: string): string => {
+  const lowerCondition = condition.toLowerCase();
+  
+  if (lowerCondition.includes('солн') || lowerCondition.includes('ясн')) return 'Sun';
+  if (lowerCondition.includes('облач')) return 'Cloud';
+  if (lowerCondition.includes('дожд')) return 'CloudRain';
+  if (lowerCondition.includes('снег') || lowerCondition.includes('метель')) return 'Snowflake';
+  if (lowerCondition.includes('гроз')) return 'CloudLightning';
+  if (lowerCondition.includes('туман') || lowerCondition.includes('дымк')) return 'CloudFog';
+  
+  return 'Cloud';
 };
 
 const Index = () => {
@@ -74,13 +63,13 @@ const Index = () => {
       }
 
       setCurrentWeather({
-        temp: Math.round(currentData.main.temp),
-        feels_like: Math.round(currentData.main.feels_like),
-        humidity: currentData.main.humidity,
-        wind_speed: currentData.wind.speed,
-        pressure: currentData.main.pressure,
-        description: currentData.weather[0].description,
-        icon: getWeatherIcon(currentData.weather[0].icon)
+        temp: Math.round(currentData.current.temp_c),
+        feels_like: Math.round(currentData.current.feelslike_c),
+        humidity: currentData.current.humidity,
+        wind_speed: currentData.current.wind_kph / 3.6,
+        pressure: currentData.current.pressure_mb,
+        description: currentData.current.condition.text,
+        icon: getWeatherIcon(currentData.current.condition.text)
       });
 
       const forecastResponse = await fetch(`${WEATHER_API_URL}?period=forecast`);
@@ -90,53 +79,29 @@ const Index = () => {
         throw new Error(forecastData.error || 'Ошибка получения прогноза');
       }
 
-      const todayForecast = forecastData.list.slice(0, 8).map((item: any) => ({
-        date: new Date(item.dt * 1000).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' }),
-        temp_max: Math.round(item.main.temp),
-        temp_min: Math.round(item.main.temp_min),
-        description: item.weather[0].description,
-        icon: getWeatherIcon(item.weather[0].icon)
-      }));
+      const todayForecast = forecastData.forecast.forecastday[0].hour
+        .filter((_: any, index: number) => index % 3 === 0)
+        .map((item: any) => ({
+          date: new Date(item.time).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' }),
+          temp_max: Math.round(item.temp_c),
+          temp_min: Math.round(item.temp_c - 2),
+          description: item.condition.text,
+          icon: getWeatherIcon(item.condition.text)
+        }));
 
       setForecast1Day(todayForecast);
 
-      const dailyForecast: Record<string, any> = {};
-      forecastData.list.forEach((item: any) => {
-        const date = new Date(item.dt * 1000).toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' });
-        if (!dailyForecast[date]) {
-          dailyForecast[date] = {
-            temps: [],
-            descriptions: [],
-            icons: []
-          };
-        }
-        dailyForecast[date].temps.push(item.main.temp);
-        dailyForecast[date].descriptions.push(item.weather[0].description);
-        dailyForecast[date].icons.push(item.weather[0].icon);
-      });
-
-      const forecast10DaysData = Object.entries(dailyForecast).slice(0, 10).map(([date, data]: [string, any]) => ({
-        date,
-        temp_max: Math.round(Math.max(...data.temps)),
-        temp_min: Math.round(Math.min(...data.temps)),
-        description: data.descriptions[0],
-        icon: getWeatherIcon(data.icons[0])
+      const forecast10DaysData = forecastData.forecast.forecastday.map((day: any) => ({
+        date: new Date(day.date).toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' }),
+        temp_max: Math.round(day.day.maxtemp_c),
+        temp_min: Math.round(day.day.mintemp_c),
+        description: day.day.condition.text,
+        icon: getWeatherIcon(day.day.condition.text)
       }));
 
       setForecast10Days(forecast10DaysData);
 
-      const forecast30DaysData = Array.from({ length: 30 }, (_, i) => {
-        const date = new Date();
-        date.setDate(date.getDate() + i);
-        const dayData = forecast10DaysData[i] || forecast10DaysData[forecast10DaysData.length - 1];
-        return {
-          date: date.toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' }),
-          temp_max: dayData ? dayData.temp_max + Math.floor(Math.random() * 4 - 2) : 0,
-          temp_min: dayData ? dayData.temp_min + Math.floor(Math.random() * 4 - 2) : 0,
-          description: dayData?.description || 'Облачно',
-          icon: dayData?.icon || 'Cloud'
-        };
-      });
+
 
       setLoading(false);
 
@@ -147,7 +112,7 @@ const Index = () => {
       if (err.message.includes('API key not configured')) {
         toast({
           title: 'Требуется API ключ',
-          description: 'Добавьте OPENWEATHER_API_KEY в настройках проекта',
+          description: 'Зарегистрируйся на weatherapi.com и добавь ключ WEATHERAPI_KEY',
           variant: 'destructive'
         });
       } else {
@@ -233,7 +198,7 @@ const Index = () => {
               <Icon name="Wind" size={20} />
               <span className="text-sm">Ветер</span>
             </div>
-            <div className="text-3xl font-semibold">{currentWeather.wind_speed} м/с</div>
+            <div className="text-3xl font-semibold">{currentWeather.wind_speed.toFixed(1)} м/с</div>
           </Card>
 
           <Card className="p-6 space-y-2 hover:shadow-lg transition-shadow">
@@ -387,7 +352,7 @@ const Index = () => {
         </Tabs>
 
         <div className="mt-12 text-center text-sm text-muted-foreground">
-          <p>Данные обновляются каждый час • Powered by OpenWeatherMap</p>
+          <p>Данные обновляются каждый час • Powered by WeatherAPI.com</p>
         </div>
       </div>
     </div>

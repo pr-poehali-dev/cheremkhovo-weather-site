@@ -1,12 +1,12 @@
 import json
 import os
-from typing import Dict, Any, Optional
+from typing import Dict, Any
 from urllib.request import urlopen, Request
 from urllib.error import HTTPError, URLError
 
 def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
     '''
-    Business: Получение данных о погоде из OpenWeatherMap API для города Черемхово
+    Business: Получение данных о погоде из WeatherAPI.com для города Черемхово
     Args: event - dict с httpMethod, queryStringParameters (period: 'current'|'forecast'|'forecast30')
           context - объект с атрибутами request_id, function_name
     Returns: HTTP response с данными о погоде
@@ -37,7 +37,7 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
             'isBase64Encoded': False
         }
     
-    api_key = os.environ.get('OPENWEATHER_API_KEY')
+    api_key = os.environ.get('WEATHERAPI_KEY')
     if not api_key:
         return {
             'statusCode': 500,
@@ -45,23 +45,22 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
                 'Content-Type': 'application/json',
                 'Access-Control-Allow-Origin': '*'
             },
-            'body': json.dumps({'error': 'API key not configured'}),
+            'body': json.dumps({'error': 'API key not configured. Get free key at https://www.weatherapi.com/signup.aspx'}),
             'isBase64Encoded': False
         }
     
     params = event.get('queryStringParameters') or {}
     period = params.get('period', 'current')
     
-    lat = 53.1575
-    lon = 103.0697
+    city = 'Cheremkhovo,Russia'
     
     try:
         if period == 'current':
-            url = f'https://api.openweathermap.org/data/2.5/weather?lat={lat}&lon={lon}&appid={api_key}&units=metric&lang=ru'
+            url = f'https://api.weatherapi.com/v1/current.json?key={api_key}&q={city}&lang=ru'
         elif period == 'forecast':
-            url = f'https://api.openweathermap.org/data/2.5/forecast?lat={lat}&lon={lon}&appid={api_key}&units=metric&lang=ru'
+            url = f'https://api.weatherapi.com/v1/forecast.json?key={api_key}&q={city}&days=10&lang=ru'
         elif period == 'forecast30':
-            url = f'https://api.openweathermap.org/data/2.5/forecast/daily?lat={lat}&lon={lon}&cnt=30&appid={api_key}&units=metric&lang=ru'
+            url = f'https://api.weatherapi.com/v1/forecast.json?key={api_key}&q={city}&days=14&lang=ru'
         else:
             return {
                 'statusCode': 400,
@@ -96,7 +95,7 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
                 'Access-Control-Allow-Origin': '*'
             },
             'body': json.dumps({
-                'error': f'OpenWeather API error: {error_body}',
+                'error': f'WeatherAPI error: {error_body}',
                 'status_code': e.code
             }),
             'isBase64Encoded': False
