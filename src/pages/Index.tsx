@@ -3,6 +3,7 @@ import { Card } from '@/components/ui/card';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import Icon from '@/components/ui/icon';
 import { useToast } from '@/hooks/use-toast';
+import WeatherAnimation from '@/components/WeatherAnimation';
 
 interface WeatherData {
   temp: number;
@@ -44,7 +45,13 @@ const Index = () => {
   const [forecast10Days, setForecast10Days] = useState<ForecastDay[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [isNight, setIsNight] = useState(false);
   const { toast } = useToast();
+
+  useEffect(() => {
+    const hour = new Date().getHours();
+    setIsNight(hour < 6 || hour >= 20);
+  }, []);
 
   useEffect(() => {
     fetchWeatherData();
@@ -296,25 +303,32 @@ const Index = () => {
     </div>
   );
 
+  const bgGradient = isNight
+    ? 'bg-gradient-to-br from-slate-900 via-blue-950 to-purple-950'
+    : 'bg-gradient-to-br from-blue-50 via-white to-purple-50';
+
+  const textColor = isNight ? 'text-gray-200' : '';
+
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 flex items-center justify-center">
+      <div className={`min-h-screen ${bgGradient} flex items-center justify-center`}>
         <div className="text-center space-y-4">
           <Icon name="CloudSun" size={64} className="text-primary animate-pulse mx-auto" />
-          <p className="text-xl text-muted-foreground">Загрузка погоды...</p>
+          <p className={`text-xl ${isNight ? 'text-gray-300' : 'text-muted-foreground'}`}>Загрузка погоды...</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50">
-      <div className="container max-w-4xl mx-auto py-12 px-4">
+    <div className={`min-h-screen ${bgGradient} transition-colors duration-1000 relative`}>
+      {currentWeather && <WeatherAnimation condition={currentWeather.description} isNight={isNight} />}
+      <div className="container max-w-4xl mx-auto py-12 px-4 relative z-20">
         <div className="mb-8">
-          <h1 className="text-4xl font-bold mb-2 bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">
+          <h1 className={`text-4xl font-bold mb-2 ${isNight ? 'text-white' : 'bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent'}`}>
             Погода в Черемхово
           </h1>
-          <p className="text-muted-foreground">
+          <p className={isNight ? 'text-gray-300' : 'text-muted-foreground'}>
             Актуальный прогноз погоды {error && '(демо режим)'}
           </p>
         </div>
