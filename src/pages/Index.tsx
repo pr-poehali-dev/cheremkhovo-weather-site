@@ -24,6 +24,7 @@ interface ForecastDay {
 }
 
 const WEATHER_API_URL = 'https://functions.poehali.dev/4bee087a-ba99-4695-8ade-49f74a767d80';
+const VISITORS_API_URL = 'https://functions.poehali.dev/b1285c45-1508-48f8-857d-dd9467fe0830';
 
 const getWeatherIcon = (condition: string): string => {
   const lowerCondition = condition.toLowerCase();
@@ -46,6 +47,7 @@ const Index = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isNight, setIsNight] = useState(false);
+  const [visitorCount, setVisitorCount] = useState<number>(0);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -55,7 +57,20 @@ const Index = () => {
 
   useEffect(() => {
     fetchWeatherData();
+    incrementVisitorCount();
   }, []);
+
+  const incrementVisitorCount = async () => {
+    try {
+      const response = await fetch(VISITORS_API_URL, { method: 'POST' });
+      const data = await response.json();
+      if (response.ok) {
+        setVisitorCount(data.visit_count);
+      }
+    } catch (err) {
+      console.error('Failed to update visitor count:', err);
+    }
+  };
 
   const fetchWeatherData = async () => {
     setLoading(true);
@@ -365,8 +380,16 @@ const Index = () => {
           </TabsContent>
         </Tabs>
 
-        <div className="mt-12 text-center text-sm text-muted-foreground">
-          <p>Данные обновляются каждый час • Powered by WeatherAPI.com</p>
+        <div className="mt-12 text-center space-y-2">
+          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/10 backdrop-blur-sm border border-white/20">
+            <Icon name="Eye" size={16} className={isNight ? 'text-gray-300' : 'text-muted-foreground'} />
+            <span className={`text-sm font-medium ${isNight ? 'text-gray-200' : 'text-foreground'}`}>
+              Посещений: {visitorCount.toLocaleString()}
+            </span>
+          </div>
+          <p className={`text-sm ${isNight ? 'text-gray-400' : 'text-muted-foreground'}`}>
+            Данные обновляются каждый час • Powered by WeatherAPI.com
+          </p>
         </div>
       </div>
     </div>
