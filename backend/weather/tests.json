@@ -1,0 +1,33 @@
+{
+  "tests": [
+    {
+      "name": "OPTIONS request for CORS",
+      "method": "OPTIONS",
+      "path": "/",
+      "expectedStatus": 200,
+      "expectedBody": "",
+      "bodyMatcher": "exact"
+    },
+    {
+      "name": "GET current weather",
+      "method": "GET",
+      "path": "/?period=current",
+      "expectedStatus": 200,
+      "expectedBody": {
+        "coord": "object",
+        "weather": "array"
+      },
+      "bodyMatcher": "partial"
+    },
+    {
+      "name": "GET forecast weather",
+      "method": "GET",
+      "path": "/?period=forecast",
+      "expectedStatus": 200,
+      "expectedBody": {
+        "list": "array"
+      },
+      "bodyMatcher": "partial"
+    }
+  ]
+}
